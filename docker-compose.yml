@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: medicheck-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: medicheck
+      POSTGRES_PASSWORD: medicheck_secure_password
+      POSTGRES_DB: medicheck
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U medicheck -d medicheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medicheck-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://medicheck:medicheck_secure_password@db:5432/medicheck?schema=public
+      JWT_ACCESS_SECRET: a7f3e9b2c1d4f6a8e0b3c5d7f9a1e3b5c7d9f1a3e5b7c9d1f3a5e7b9c1d3f5a
+      JWT_REFRESH_SECRET: b8c4f0e1a2d3c4b5f6e7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

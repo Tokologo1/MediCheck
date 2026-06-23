@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Dispensary {
+  id              String   @id @default(cuid())
+  name            String
+  address         String
+  phone           String?
+  email           String?
+  operatingHours  String?
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  inventory       Inventory[]
+
+  @@map("dispensaries")
+}
+
+model Medication {
+  id                   String   @id @default(cuid())
+  name                 String
+  description          String?
+  category             String
+  dosage               String?
+  manufacturer         String?
+  requiresPrescription Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  inventory            Inventory[]
+
+  @@map("medications")
+}
+
+model Inventory {
+  id             String   @id @default(cuid())
+  dispensaryId   String
+  medicationId   String
+  quantityInStock Int
+  price          Float
+  lastRestocked  DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  dispensary     Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  medication     Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+
+  @@unique([dispensaryId, medicationId])
+  @@map("inventory")
+}
