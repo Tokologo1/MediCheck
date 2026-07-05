@@ -9,17 +9,26 @@ export interface AuthUser {
 }
 
 /**
- * Extract and verify the JWT from the Authorization header.
- * Returns null if the token is missing or invalid.
+ * Extract and verify the JWT from:
+ * 1. The httpOnly `access-token` cookie (set by login API)
+ * 2. The Authorization Bearer header (fallback for API clients)
  */
 export function getSession(request: NextRequest): AuthUser | null {
-  const authHeader = request.headers.get("authorization");
+  // Primary: read from httpOnly cookie (set by login)
+  const cookieToken = request.cookies.get("access-token")?.value;
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  // Fallback: read from Authorization header (API clients)
+  const authHeader = request.headers.get("authorization");
+  const headerToken =
+    authHeader && authHeader.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : null;
+
+  const token = cookieToken || headerToken;
+
+  if (!token) {
     return null;
   }
-
-  const token = authHeader.substring(7);
 
   try {
     return verifyAccessToken(token) as AuthUser;

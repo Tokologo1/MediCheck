@@ -13,8 +13,10 @@ import {
   Shield,
   Menu,
   X,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
 interface NavbarProps {
   user?: {
@@ -38,7 +40,7 @@ export default function Navbar({ user }: NavbarProps) {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await apiFetch("/api/auth/logout", { method: "POST" });
       router.push("/login");
       router.refresh();
     } catch {
@@ -50,6 +52,7 @@ export default function Navbar({ user }: NavbarProps) {
     ? [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/search", label: "Search Medications", icon: Search },
+        { href: "/profile", label: "Profile", icon: UserCircle },
         ...(user.role === "ADMIN"
           ? [{ href: "/admin", label: "Admin Panel", icon: Shield }]
           : []),

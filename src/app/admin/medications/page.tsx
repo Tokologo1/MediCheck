@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Loader2, FileText } from "lucide-react";
+import { Plus, Trash2, Loader2, FileText, Pencil } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface Medication {
   id: string;
@@ -19,6 +20,9 @@ export default function AdminMedicationsPage() {
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Medication>>({});
+  const [editLoading, setEditLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -31,7 +35,7 @@ export default function AdminMedicationsPage() {
 
   const fetchMedications = async () => {
     try {
-      const res = await fetch("/api/medications");
+      const res = await api.get("/api/medications");
       if (res.ok) {
         const data = await res.json();
         setMedications(data.medications || []);
@@ -54,11 +58,7 @@ export default function AdminMedicationsPage() {
     setFormLoading(true);
 
     try {
-      const res = await fetch("/api/medications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+      const res = await api.post("/api/medications", formData);
 
       if (res.ok) {
         setFormData({
@@ -86,12 +86,33 @@ export default function AdminMedicationsPage() {
     if (!confirm("Are you sure you want to delete this medication?")) return;
 
     try {
-      const res = await fetch(`/api/medications/${id}`, { method: "DELETE" });
+      const res = await api.delete(`/api/medications/${id}`);
       if (res.ok) {
         fetchMedications();
       }
     } catch (err) {
       console.error("Failed to delete:", err);
+    }
+  };
+
+  const handleEdit = (med: Medication) => {
+    setEditingId(med.id);
+    setEditData({ ...med });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    setEditLoading(true);
+    try {
+      const res = await api.put(`/api/medications/${editingId}`, editData);
+      if (res.ok) {
+        setEditingId(null);
+        fetchMedications();
+      }
+    } catch (err) {
+      console.error("Failed to update:", err);
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -230,32 +251,57 @@ export default function AdminMedicationsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {medications.map((med) => (
-                  <tr key={med.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{med.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{med.category}</td>
-                    <td className="px-4 py-3 text-gray-600">{med.dosage || "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{med.manufacturer || "—"}</td>
-                    <td className="px-4 py-3">
-                      {med.requiresPrescription ? (
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                          Rx
-                        </span>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleDelete(med.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {medications.map((med) =>
+                  editingId === med.id ? (
+                    <tr key={med.id} className="bg-emerald-50">
+                      <td className="px-4 py-2">
+                        <input value={editData.name || ""} onChange={(e) => setEditData({ ...editData, name: e.target.value })} className="w-full px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={editData.category || ""} onChange={(e) => setEditData({ ...editData, category: e.target.value })} className="w-full px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={editData.dosage || ""} onChange={(e) => setEditData({ ...editData, dosage: e.target.value })} className="w-full px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input value={editData.manufacturer || ""} onChange={(e) => setEditData({ ...editData, manufacturer: e.target.value })} className="w-full px-2 py-1 rounded border border-gray-300 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500" />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input type="checkbox" checked={editData.requiresPrescription || false} onChange={(e) => setEditData({ ...editData, requiresPrescription: e.target.checked })} className="rounded border-gray-300 text-emerald-600" />
+                      </td>
+                      <td className="px-4 py-2 text-right space-x-1">
+                        <button onClick={handleEditSave} disabled={editLoading} className="px-2 py-1 text-xs font-medium text-white bg-emerald-600 rounded hover:bg-emerald-700 disabled:opacity-50">
+                          {editLoading ? "Saving..." : "Save"}
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200">
+                          Cancel
+                        </button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={med.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 font-medium text-gray-900">{med.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{med.category}</td>
+                      <td className="px-4 py-3 text-gray-600">{med.dosage || "—"}</td>
+                      <td className="px-4 py-3 text-gray-600">{med.manufacturer || "—"}</td>
+                      <td className="px-4 py-3">
+                        {med.requiresPrescription ? (
+                          <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Rx</span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-1">
+                        <button onClick={() => handleEdit(med)} className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-emerald-50 transition-colors" title="Edit">
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleDelete(med.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>

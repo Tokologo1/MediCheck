@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Pill, Eye, EyeOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 const passwordRules = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
@@ -43,10 +44,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await apiFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, confirmPassword }),
+        skipCsrf: true,
       });
 
       const data = await res.json();

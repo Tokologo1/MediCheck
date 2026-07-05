@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
-import { Pill, Building2, Package } from "lucide-react";
+import { Pill, Building2, Package, LayoutDashboard } from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -56,9 +56,10 @@ export default function AdminLayout({
   }
 
   const adminLinks = [
-    { href: "/admin", label: "Dashboard", icon: Package },
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/medications", label: "Medications", icon: Pill },
     { href: "/admin/dispensaries", label: "Dispensaries", icon: Building2 },
+    { href: "/admin/inventory", label: "Inventory", icon: Package },
   ];
 
   return (

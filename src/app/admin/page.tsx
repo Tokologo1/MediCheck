@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pill, Building2, AlertTriangle, ArrowRight, Package } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface OverviewData {
   totalMedications: number;
@@ -22,21 +23,13 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [medRes, dispRes] = await Promise.all([
-          fetch("/api/medications"),
-          fetch("/api/dispensaries"),
-        ]);
-
-        if (medRes.ok) {
-          const medData = await medRes.json();
-          setData((prev) => ({ ...prev, totalMedications: medData.pagination?.total || 0 }));
-        }
-        if (dispRes.ok) {
-          const dispData = await dispRes.json();
-          setData((prev) => ({ ...prev, totalDispensaries: dispData.dispensaries?.length || 0 }));
+        const res = await api.get("/api/admin/stats");
+        if (res.ok) {
+          const stats = await res.json();
+          setData(stats);
         }
       } catch (err) {
-        console.error("Failed to fetch admin data:", err);
+        console.error("Failed to fetch admin stats:", err);
       }
     }
 

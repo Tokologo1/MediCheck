@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Pill, Eye, EyeOff, Loader2 } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 function LoginForm() {
   const router = useRouter();
@@ -22,10 +23,11 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        skipCsrf: true,
       });
 
       const data = await res.json();

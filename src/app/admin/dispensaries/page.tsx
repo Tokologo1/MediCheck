@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2, Loader2, Building2, MapPin, Phone, Clock } from "lucide-react";
+import { Plus, Trash2, Loader2, Building2, MapPin, Phone, Clock, Pencil } from "lucide-react";
+import { api } from "@/lib/api";
 
 interface Dispensary {
   id: string;
@@ -21,6 +22,9 @@ export default function AdminDispensariesPage() {
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<Dispensary>>({});
 
   const [formData, setFormData] = useState({
     name: "",
@@ -34,7 +38,7 @@ export default function AdminDispensariesPage() {
 
   const fetchDispensaries = async () => {
     try {
-      const res = await fetch("/api/dispensaries");
+      const res = await api.get("/api/dispensaries");
       if (res.ok) {
         const data = await res.json();
         setDispensaries(data.dispensaries || []);
@@ -66,11 +70,7 @@ export default function AdminDispensariesPage() {
         operatingHours: formData.operatingHours || undefined,
       };
 
-      const res = await fetch("/api/dispensaries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const res = await api.post("/api/dispensaries", payload);
 
       if (res.ok) {
         setFormData({
@@ -99,7 +99,7 @@ export default function AdminDispensariesPage() {
     if (!confirm("Are you sure you want to delete this dispensary? This will also remove all its inventory.")) return;
 
     try {
-      const res = await fetch(`/api/dispensaries/${id}`, { method: "DELETE" });
+      const res = await api.delete(`/api/dispensaries/${id}`);
       if (res.ok) {
         fetchDispensaries();
       } else {
@@ -108,6 +108,27 @@ export default function AdminDispensariesPage() {
       }
     } catch (err) {
       console.error("Failed to delete:", err);
+    }
+  };
+
+  const handleEdit = (disp: Dispensary) => {
+    setEditingId(disp.id);
+    setEditFormData({ ...disp });
+  };
+
+  const handleEditSave = async () => {
+    if (!editingId) return;
+    setEditLoading(true);
+    try {
+      const res = await api.put(`/api/dispensaries/${editingId}`, editFormData);
+      if (res.ok) {
+        setEditingId(null);
+        fetchDispensaries();
+      }
+    } catch (err) {
+      console.error("Failed to update:", err);
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -244,7 +265,25 @@ export default function AdminDispensariesPage() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {dispensaries.map((disp) => (
+          {dispensaries.map((disp) =>
+            editingId === disp.id ? (
+              <div key={disp.id} className="bg-blue-50 rounded-xl border border-blue-200 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900">Editing Dispensary</h3>
+                  <button onClick={() => setEditingId(null)} className="text-gray-400 hover:text-gray-600 text-xs">Cancel</button>
+                </div>
+                <div className="space-y-2">
+                  <input value={editFormData.name || ""} onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })} placeholder="Name" className="w-full px-2 py-1.5 rounded border border-gray-300 text-sm" />
+                  <input value={editFormData.address || ""} onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })} placeholder="Address" className="w-full px-2 py-1.5 rounded border border-gray-300 text-sm" />
+                  <input value={editFormData.phone || ""} onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })} placeholder="Phone" className="w-full px-2 py-1.5 rounded border border-gray-300 text-sm" />
+                  <input value={editFormData.email || ""} onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })} placeholder="Email" className="w-full px-2 py-1.5 rounded border border-gray-300 text-sm" />
+                  <input value={editFormData.operatingHours || ""} onChange={(e) => setEditFormData({ ...editFormData, operatingHours: e.target.value })} placeholder="Operating Hours" className="w-full px-2 py-1.5 rounded border border-gray-300 text-sm" />
+                </div>
+                <button onClick={handleEditSave} disabled={editLoading} className="mt-3 w-full px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                  {editLoading ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            ) : (
             <div
               key={disp.id}
               className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"
@@ -253,13 +292,22 @@ export default function AdminDispensariesPage() {
                 <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <button
-                  onClick={() => handleDelete(disp.id)}
-                  className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-                  title="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleEdit(disp)}
+                    className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(disp.id)}
+                    className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <h3 className="mt-3 font-semibold text-gray-900">{disp.name}</h3>
@@ -288,7 +336,8 @@ export default function AdminDispensariesPage() {
                 </p>
               </div>
             </div>
-          ))}
+            )
+          )}
         </div>
       )}
     </div>

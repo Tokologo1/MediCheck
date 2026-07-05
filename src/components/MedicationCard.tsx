@@ -1,5 +1,6 @@
-import { Pill, FileText, Building2, Clock, Phone, FlaskConical } from "lucide-react";
+import { Pill, FileText, Building2, Clock, Phone, FlaskConical, ArrowRight } from "lucide-react";
 import AvailabilityBadge from "./AvailabilityBadge";
+import Link from "next/link";
 
 interface DispensaryAvailability {
   dispensaryId: string;
@@ -50,6 +51,13 @@ export default function MedicationCard({ medication }: MedicationCardProps) {
                 Rx
               </span>
             )}
+            <Link
+              href={`/medications/${medication.id}`}
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+            >
+              Details
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </div>
 

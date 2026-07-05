@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/dashboard"];
+const PROTECTED_ROUTES = ["/dashboard", "/search", "/medications"];
 // Routes that require admin role
 const ADMIN_ROUTES = ["/admin"];
 
@@ -30,9 +30,9 @@ export function proxy(request: NextRequest) {
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob:",
-    "font-src 'self'",
+    "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
@@ -41,24 +41,33 @@ export function proxy(request: NextRequest) {
   response.headers.set("Content-Security-Policy", csp);
 
   // --- CSRF Protection (Double Submit Cookie) ---
-  const csrfToken = crypto.randomUUID();
-  response.cookies.set("csrf-token", csrfToken, {
-    httpOnly: false,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-  });
+  // Set a new CSRF token on GET requests (page loads)
+  if (request.method === "GET" && !pathname.startsWith("/api/")) {
+    const csrfToken = crypto.randomUUID();
+    response.cookies.set("csrf-token", csrfToken, {
+      httpOnly: false,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
+  }
 
-  // Only check API routes for CSRF
+  // Validate CSRF on mutating API requests
   if (pathname.startsWith("/api/") && request.method !== "GET") {
-    const cookieCsrf = request.cookies.get("csrf-token")?.value;
-    const headerCsrf = request.headers.get("x-csrf-token");
+    // Skip CSRF for auth endpoints (login/register happen before we have a cookie)
+    const isAuthEndpoint =
+      pathname === "/api/auth/login" || pathname === "/api/auth/register";
 
-    if (!cookieCsrf || !headerCsrf || cookieCsrf !== headerCsrf) {
-      return NextResponse.json(
-        { error: "CSRF validation failed" },
-        { status: 403 }
-      );
+    if (!isAuthEndpoint) {
+      const cookieCsrf = request.cookies.get("csrf-token")?.value;
+      const headerCsrf = request.headers.get("x-csrf-token");
+
+      if (!cookieCsrf || !headerCsrf || cookieCsrf !== headerCsrf) {
+        return NextResponse.json(
+          { error: "CSRF validation failed" },
+          { status: 403 }
+        );
+      }
     }
   }
 
@@ -70,12 +79,12 @@ export function proxy(request: NextRequest) {
   const accessToken = request.cookies.get("access-token")?.value;
 
   // Check if user is trying to access protected routes
-  const isProtectedRoute = PROTECTED_ROUTES.some((route) =>
-    pathname === route || pathname.startsWith(route + "/")
+  const isProtectedRoute = PROTECTED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
   );
 
-  const isAdminRoute = ADMIN_ROUTES.some((route) =>
-    pathname === route || pathname.startsWith(route + "/")
+  const isAdminRoute = ADMIN_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + "/")
   );
 
   if (isProtectedRoute && !accessToken) {
