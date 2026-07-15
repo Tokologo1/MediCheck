@@ -1,0 +1,20 @@
+# =============================================================================
+# MediCheck — Example Terraform Variable Values
+# Copy this file to terraform.tfvars and customize as needed.
+# DO NOT commit terraform.tfvars if it contains secrets.
+# =============================================================================
+
+project_id        = "project-fbd1d979-ca47-4901-bbf"
+region            = "us-central1"
+service_name      = "medicheck-web"
+repo_name         = "medicheck"
+sql_instance_name = "medicheck-db"
+sql_tier          = "db-f1-micro"
+db_name           = "medicheck"
+db_user           = "medicheck"
+
+# Scaling
+cloud_run_min_instances = 0
+cloud_run_max_instances = 10
+cloud_run_memory        = "512Mi"
+cloud_run_cpu           = "1"

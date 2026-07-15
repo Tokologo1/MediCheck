@@ -1,0 +1,20 @@
+steps:
+  # Use kaniko to build AND push in a single step
+  # Kaniko reads credentials directly from the GCP metadata server - no Docker daemon or gcloud needed
+  - name: 'gcr.io/kaniko-project/executor:v1.23.2-debug'
+    args:
+      - '--dockerfile=Dockerfile'
+      - '--context=dir:///workspace'
+      - '--destination=us-central1-docker.pkg.dev/$PROJECT_ID/$_REPO_NAME/$_SERVICE_NAME:latest'
+      - '--cache=false'
+      - '--skip-unused-stages=false'
+      - '--build-arg=NODE_OPTIONS=--max-old-space-size=4096'
+    timeout: '1200s'
+
+substitutions:
+  _REPO_NAME: medicheck
+  _SERVICE_NAME: medicheck-web
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'E2_HIGHCPU_8'
