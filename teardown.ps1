@@ -32,7 +32,7 @@ param(
   [switch]$WhatIf
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 # Call gcloud directly via its CMD wrapper (avoids nested powershell hang)
 $GcloudCmd = "$env:USERPROFILE\google-cloud-sdk\google-cloud-sdk\bin\gcloud.cmd"

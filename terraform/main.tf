@@ -9,6 +9,11 @@
 terraform {
   required_version = ">= 1.6.0"
 
+  backend "gcs" {
+    bucket = "project-fbd1d979-ca47-4901-bbf-medicheck-tf-state"
+    prefix = "medicheck/production"
+  }
+
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -21,8 +26,8 @@ terraform {
   }
 
   # ── Local state (default) ──────────────────────────────────────────────────
-  # Suitable for a single developer. To migrate to GCS remote state, replace
-  # this block with:
+  # Remote state is stored in the production GCS bucket above.
+  # For another environment, use a separate state prefix or bucket:
   #
   #   backend "gcs" {
   #     bucket = "your-tf-state-bucket-name"

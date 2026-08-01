@@ -1,12 +1,11 @@
 #!/bin/sh
 # scripts/run-migrations.sh
-# Push Prisma schema and optional seeding for Cloud Run Jobs
-# NOTE: This project uses `prisma db push` (schema push) rather than migration files.
-# For production migration-based workflows, run `npx prisma migrate dev --name init` locally first.
+# Apply committed Prisma migrations and optionally seed a Cloud Run Job.
+# Production never uses `prisma db push --accept-data-loss`.
 set -e
 
 echo "🔄 Pushing Prisma schema to database..."
-npx prisma db push --accept-data-loss
+npx prisma migrate deploy
 
 echo "✅ Schema push complete."
 

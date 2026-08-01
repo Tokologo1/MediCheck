@@ -14,6 +14,7 @@ locals {
     "servicenetworking.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
+    "storage.googleapis.com",
   ]
 }
 

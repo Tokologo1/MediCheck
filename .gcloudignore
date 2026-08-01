@@ -1,37 +1,17 @@
-# .gcloudignore - Exclude files from Cloud Build uploads
+# Keep Cloud Build uploads limited to source required by Dockerfile.
+#!include:.gitignore
 
-# Dependencies (installed during build)
-node_modules/
-
-# Build artifacts (rebuilt in Cloud Build)
-.next/
-
-# Git history
-.git/
-
-# Local environment files (secrets managed via Secret Manager)
+.gcloudignore
+.git
+.github
+.agents
+node_modules
+.next
+coverage
 .env
-.env.local
-.env.production
-.env.development
-
-# TypeScript build info
-tsconfig.tsbuildinfo
-
-# Logs
-npm-debug.log*
+.env.*
 *.log
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-
-# Documentation (not needed for build)
-*.md
-
-# Local docker files
-bash.exe.stackdump
+*.stackdump
+terraform/.terraform
+terraform/*.tfplan
+teardown.log

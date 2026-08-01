@@ -21,3 +21,13 @@ output "cloud_build_command" {
   description = "Command to build and push the Docker image"
   value       = "gcloud builds submit . --config=cloudbuild.yaml --substitutions=_REGION=${var.region},_REPO_NAME=${var.repo_name},_SERVICE_NAME=${var.service_name} --project=${var.project_id} --timeout=20m"
 }
+
+output "github_workload_identity_provider" {
+  description = "GitHub production environment secret GCP_WORKLOAD_IDENTITY_PROVIDER"
+  value       = google_iam_workload_identity_pool_provider.github.name
+}
+
+output "github_deployer_service_account" {
+  description = "GitHub production environment secret GCP_SERVICE_ACCOUNT"
+  value       = google_service_account.github_deployer.email
+}

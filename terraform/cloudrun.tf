@@ -93,6 +93,10 @@ resource "google_cloud_run_v2_service" "app" {
 
   depends_on = [
     google_secret_manager_secret_iam_member.cloud_run_accessor,
+    google_secret_manager_secret_version.db_url,
+    google_secret_manager_secret_version.jwt_access,
+    google_secret_manager_secret_version.jwt_refresh,
+    google_project_iam_member.runtime_cloud_sql_client,
     google_artifact_registry_repository.docker,
   ]
 }
@@ -104,95 +108,6 @@ resource "google_cloud_run_v2_service_iam_member" "public_access" {
   name     = google_cloud_run_v2_service.app.name
   role     = "roles/run.invoker"
   member   = "allUsers"
-}
-
-# Update NEXT_PUBLIC_APP_URL to the live service URL after first deploy
-resource "google_cloud_run_v2_service" "app_url_patch" {
-  name     = var.service_name
-  project  = var.project_id
-  location = var.region
-
-  ingress = "INGRESS_TRAFFIC_ALL"
-
-  template {
-    service_account = local.cloud_run_sa
-
-    scaling {
-      min_instance_count = var.cloud_run_min_instances
-      max_instance_count = var.cloud_run_max_instances
-    }
-
-    volumes {
-      name = "cloudsql"
-      cloud_sql_instance {
-        instances = [google_sql_database_instance.main.connection_name]
-      }
-    }
-
-    containers {
-      image = "${local.image_base}:latest"
-
-      ports {
-        container_port = 3000
-      }
-
-      resources {
-        limits = {
-          cpu    = var.cloud_run_cpu
-          memory = var.cloud_run_memory
-        }
-      }
-
-      env {
-        name  = "NODE_ENV"
-        value = "production"
-      }
-
-      env {
-        name  = "NEXT_PUBLIC_APP_URL"
-        value = google_cloud_run_v2_service.app.uri
-      }
-
-      env {
-        name = "DATABASE_URL"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.db_url.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "JWT_ACCESS_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.jwt_access.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "JWT_REFRESH_SECRET"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.jwt_refresh.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      volume_mounts {
-        name       = "cloudsql"
-        mount_path = "/cloudsql"
-      }
-    }
-
-    timeout = "60s"
-  }
-
-  depends_on = [google_cloud_run_v2_service.app]
 }
 
 # ── Cloud Run Job (Prisma Migrations) ────────────────────────────────────────
@@ -216,7 +131,7 @@ resource "google_cloud_run_v2_job" "migrate" {
       }
 
       containers {
-        image   = "${local.image_base}:latest"
+        image   = "${local.image_base}:latest-migrate"
         command = ["/bin/sh"]
         args    = ["-c", "sh scripts/run-migrations.sh"]
 
@@ -250,6 +165,10 @@ resource "google_cloud_run_v2_job" "migrate" {
 
   depends_on = [
     google_secret_manager_secret_iam_member.cloud_run_accessor,
+    google_secret_manager_secret_version.db_url,
+    google_secret_manager_secret_version.jwt_access,
+    google_secret_manager_secret_version.jwt_refresh,
+    google_project_iam_member.runtime_cloud_sql_client,
     google_artifact_registry_repository.docker,
   ]
 }

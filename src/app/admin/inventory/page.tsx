@@ -62,7 +62,6 @@ export default function AdminInventoryPage() {
 
   useEffect(() => {
     if (!selectedDispensary) {
-      setInventory([]);
       return;
     }
     async function loadInventory() {
@@ -183,7 +182,10 @@ export default function AdminInventoryPage() {
         </label>
         <select
           value={selectedDispensary}
-          onChange={(e) => setSelectedDispensary(e.target.value)}
+          onChange={(e) => {
+            setSelectedDispensary(e.target.value);
+            setInventory([]);
+          }}
           className="w-full sm:w-80 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
         >
           <option value="">— Choose a dispensary —</option>

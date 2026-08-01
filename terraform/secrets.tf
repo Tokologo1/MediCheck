@@ -70,8 +70,7 @@ resource "google_secret_manager_secret_version" "jwt_refresh" {
 
 # ── IAM: Grant Cloud Run SA access to all secrets ────────────────────────────
 locals {
-  # The default App Engine service account used by Cloud Run
-  cloud_run_sa = "${var.project_id}@appspot.gserviceaccount.com"
+  cloud_run_sa = google_service_account.runtime.email
 
   secret_ids = [
     google_secret_manager_secret.db_url.secret_id,

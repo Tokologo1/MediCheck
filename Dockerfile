@@ -9,6 +9,12 @@ COPY package.json package-lock.json* ./
 COPY prisma ./prisma/
 RUN npm ci
 
+# Migration jobs retain the Prisma CLI; the web runtime stays lightweight.
+FROM deps AS migrate
+WORKDIR /app
+COPY . .
+RUN npx prisma generate
+
 # Stage 2: Build the application
 FROM node:20-alpine AS builder
 RUN apk add --no-cache openssl
@@ -20,8 +26,8 @@ COPY . .
 # Re-generate Prisma client for the builder environment
 RUN npx prisma generate
 
-# Build Next.js with enough memory
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+# Cap build heap so concurrent Cloud Build jobs do not reserve unnecessary memory.
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 
 # Stage 3: Minimal production image
