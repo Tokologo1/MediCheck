@@ -262,7 +262,7 @@ if (-not $SkipMigrate) {
       --max-retries=1 `
       --parallelism=1 `
       --task-timeout=10m `
-      --service-account="$ProjectId@appspot.gserviceaccount.com"
+      --service-account="medicheck-runtime@$ProjectId.iam.gserviceaccount.com"
   } else {
     gcloud run jobs update $MigrateJobName `
       --image="$ImageBase`:latest-migrate" `
@@ -310,7 +310,7 @@ gcloud run deploy $ServiceName `
   --set-secrets="DATABASE_URL=medicheck-db-url:latest,JWT_ACCESS_SECRET=medicheck-jwt-access-secret:latest,JWT_REFRESH_SECRET=medicheck-jwt-refresh-secret:latest" `
   --set-env-vars="NODE_ENV=production" `
   --timeout=60 `
-  --service-account="$ProjectId@appspot.gserviceaccount.com"
+  --service-account="medicheck-runtime@$ProjectId.iam.gserviceaccount.com"
 
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[FAIL] Cloud Run deployment failed. Check logs above." -ForegroundColor Red
