@@ -17,6 +17,7 @@ env:
   ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY || 'medicheck' }}
   CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'medicheck-web' }}
   MIGRATION_JOB: ${{ vars.MIGRATION_JOB || 'medicheck-migrate' }}
+  CLOUD_BUILD_SOURCE_BUCKET: ${{ vars.CLOUD_BUILD_SOURCE_BUCKET || 'project-fbd1d979-ca47-4901-bbf-medicheck-build-source' }}
 
 jobs:
   deploy:
@@ -32,7 +33,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
       - name: Build image
         run: >-
-          gcloud builds submit . --config=cloudbuild.yaml --project="$GCP_PROJECT_ID"
+          gcloud builds submit . --config=cloudbuild.yaml --project="$GCP_PROJECT_ID" --gcs-source-staging-dir="gs://$CLOUD_BUILD_SOURCE_BUCKET"
           --substitutions="_REGION=$GCP_REGION,_REPO_NAME=$ARTIFACT_REPOSITORY,_SERVICE_NAME=$CLOUD_RUN_SERVICE,_TAG=$GITHUB_SHA"
       - name: Run database migrations
         run: >-

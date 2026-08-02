@@ -13,6 +13,7 @@ Create a protected `production` GitHub environment. Configure these repository v
 - `ARTIFACT_REPOSITORY` (optional; defaults to `medicheck`)
 - `CLOUD_RUN_SERVICE` (optional; defaults to `medicheck-web`)
 - `MIGRATION_JOB` (optional; defaults to `medicheck-migrate`)
+- `CLOUD_BUILD_SOURCE_BUCKET` (optional; defaults to `project-fbd1d979-ca47-4901-bbf-medicheck-build-source`)
 
 Configure these `production` environment secrets for Google Workload Identity Federation:
 
@@ -20,6 +21,8 @@ Configure these `production` environment secrets for Google Workload Identity Fe
 - `GCP_SERVICE_ACCOUNT`: `medicheck-github-deployer@project-fbd1d979-ca47-4901-bbf.iam.gserviceaccount.com`
 
 Grant that service account Cloud Build, Artifact Registry, Cloud Run, and service-account impersonation permissions. Do not store a JSON service-account key in GitHub.
+
+Terraform manages required GitHub deployer roles: Cloud Build Editor, Cloud Run Admin, Service Usage Consumer, bucket-scoped Cloud Build source upload access, and limited `iam.serviceAccountUser` access to the MediCheck runtime account.
 
 ## First migration
 

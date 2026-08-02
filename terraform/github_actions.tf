@@ -42,6 +42,32 @@ resource "google_project_iam_member" "github_cloud_run_admin" {
   member  = "serviceAccount:${google_service_account.github_deployer.email}"
 }
 
+# Required by gcloud builds submit to use enabled Google Cloud services.
+resource "google_project_iam_member" "github_service_usage_consumer" {
+  project = var.project_id
+  role    = "roles/serviceusage.serviceUsageConsumer"
+  member  = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
+# Dedicated staging bucket avoids relying on legacy Cloud Build bucket policies.
+resource "google_storage_bucket" "cloud_build_source" {
+  name                        = "${var.project_id}-medicheck-build-source"
+  project                     = var.project_id
+  location                    = var.region
+  uniform_bucket_level_access = true
+
+  lifecycle_rule {
+    action { type = "Delete" }
+    condition { age = 1 }
+  }
+}
+
+resource "google_storage_bucket_iam_member" "github_cloud_build_source_writer" {
+  bucket = google_storage_bucket.cloud_build_source.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
 resource "google_service_account_iam_member" "github_workload_identity" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
