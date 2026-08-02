@@ -188,18 +188,24 @@ $JwtRefreshSecret = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 6
 function Set-GcpSecret {
   param([string]$SecretName, [string]$SecretValue)
   $exists = gcloud secrets describe $SecretName --project=$ProjectId 2>&1
+  
+  $TempFile = [System.IO.Path]::GetTempFileName()
+  [System.IO.File]::WriteAllText($TempFile, $SecretValue)
+  
   if ($LASTEXITCODE -ne 0) {
-    $SecretValue | gcloud secrets create $SecretName `
+    gcloud secrets create $SecretName `
       --replication-policy=automatic `
       --project=$ProjectId `
-      --data-file=-
+      --data-file=$TempFile
     Write-Host "  [OK] Secret '$SecretName' created." -ForegroundColor Green
   } else {
-    $SecretValue | gcloud secrets versions add $SecretName `
+    gcloud secrets versions add $SecretName `
       --project=$ProjectId `
-      --data-file=-
+      --data-file=$TempFile
     Write-Host "  [OK] Secret '$SecretName' updated." -ForegroundColor Green
   }
+  
+  if (Test-Path $TempFile) { Remove-Item $TempFile -Force }
 }
 
 Set-GcpSecret -SecretName "medicheck-db-url"           -SecretValue $script:DbUrl
