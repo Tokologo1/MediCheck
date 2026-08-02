@@ -31,3 +31,8 @@ output "github_deployer_service_account" {
   description = "GitHub production environment secret GCP_SERVICE_ACCOUNT"
   value       = google_service_account.github_deployer.email
 }
+
+output "cloud_build_source_bucket" {
+  description = "GitHub repository variable CLOUD_BUILD_SOURCE_BUCKET"
+  value       = google_storage_bucket.cloud_build_source.name
+}
