@@ -141,7 +141,7 @@ if (-not $SkipSql) {
   }
 
   # Generate and set DB user password
-  $DbPassword = -join ((65..90) + (97..122) + (48..57) + (33, 35, 36, 42, 43, 45) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+  $DbPassword = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
   gcloud sql users create $DbUser `
     --instance=$SqlInstance `
     --password=$DbPassword `
