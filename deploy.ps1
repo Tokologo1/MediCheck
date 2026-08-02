@@ -26,7 +26,7 @@ param(
   [switch]$SeedDatabase
 )
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 # Resolve gcloud from PATH. This supports both the standard installer and a custom SDK location.
 $GcloudCommand = Get-Command gcloud.cmd -ErrorAction SilentlyContinue

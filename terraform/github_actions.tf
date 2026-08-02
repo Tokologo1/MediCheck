@@ -68,6 +68,13 @@ resource "google_storage_bucket_iam_member" "github_cloud_build_source_writer" {
   member = "serviceAccount:${google_service_account.github_deployer.email}"
 }
 
+# `gcloud builds submit` reads bucket metadata before staging source objects.
+resource "google_storage_bucket_iam_member" "github_cloud_build_source_viewer" {
+  bucket = google_storage_bucket.cloud_build_source.name
+  role   = "roles/storage.bucketViewer"
+  member = "serviceAccount:${google_service_account.github_deployer.email}"
+}
+
 resource "google_service_account_iam_member" "github_workload_identity" {
   service_account_id = google_service_account.github_deployer.name
   role               = "roles/iam.workloadIdentityUser"
