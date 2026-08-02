@@ -141,7 +141,7 @@ if (-not $SkipSql) {
   }
 
   # Generate and set DB user password
-  $DbPassword = -join ((65..90) + (97..122) + (48..57) + (33, 35, 36, 42, 43, 45) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
+  $DbPassword = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object { [char]$_ })
   gcloud sql users create $DbUser `
     --instance=$SqlInstance `
     --password=$DbPassword `
@@ -188,18 +188,24 @@ $JwtRefreshSecret = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 6
 function Set-GcpSecret {
   param([string]$SecretName, [string]$SecretValue)
   $exists = gcloud secrets describe $SecretName --project=$ProjectId 2>&1
+  
+  $TempFile = [System.IO.Path]::GetTempFileName()
+  [System.IO.File]::WriteAllText($TempFile, $SecretValue)
+  
   if ($LASTEXITCODE -ne 0) {
-    $SecretValue | gcloud secrets create $SecretName `
+    gcloud secrets create $SecretName `
       --replication-policy=automatic `
       --project=$ProjectId `
-      --data-file=-
+      --data-file=$TempFile
     Write-Host "  [OK] Secret '$SecretName' created." -ForegroundColor Green
   } else {
-    $SecretValue | gcloud secrets versions add $SecretName `
+    gcloud secrets versions add $SecretName `
       --project=$ProjectId `
-      --data-file=-
+      --data-file=$TempFile
     Write-Host "  [OK] Secret '$SecretName' updated." -ForegroundColor Green
   }
+  
+  if (Test-Path $TempFile) { Remove-Item $TempFile -Force }
 }
 
 Set-GcpSecret -SecretName "medicheck-db-url"           -SecretValue $script:DbUrl
@@ -256,7 +262,7 @@ if (-not $SkipMigrate) {
       --max-retries=1 `
       --parallelism=1 `
       --task-timeout=10m `
-      --service-account="$ProjectId@appspot.gserviceaccount.com"
+      --service-account="medicheck-runtime@$ProjectId.iam.gserviceaccount.com"
   } else {
     gcloud run jobs update $MigrateJobName `
       --image="$ImageBase`:latest-migrate" `
@@ -304,7 +310,7 @@ gcloud run deploy $ServiceName `
   --set-secrets="DATABASE_URL=medicheck-db-url:latest,JWT_ACCESS_SECRET=medicheck-jwt-access-secret:latest,JWT_REFRESH_SECRET=medicheck-jwt-refresh-secret:latest" `
   --set-env-vars="NODE_ENV=production" `
   --timeout=60 `
-  --service-account="$ProjectId@appspot.gserviceaccount.com"
+  --service-account="medicheck-runtime@$ProjectId.iam.gserviceaccount.com"
 
 if ($LASTEXITCODE -ne 0) {
   Write-Host "[FAIL] Cloud Run deployment failed. Check logs above." -ForegroundColor Red
