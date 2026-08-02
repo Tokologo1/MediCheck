@@ -150,3 +150,7 @@ medicheck/
 ## 📜 License
 
 This project is for educational/demonstration purposes.
+
+## Branch workflow
+
+See [BRANCHING.md](BRANCHING.md) for pull-request flow: short-lived feature branches, `dev` integration, then protected `main` production releases.
