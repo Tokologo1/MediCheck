@@ -40,13 +40,13 @@ async function main() {
     update: {},
     create: {
       id: "disp_001",
-      name: "HealthFirst Pharmacy - Downtown",
-      address: "123 Main Street, Downtown, City 10001",
-      phone: "+1-555-0101",
-      email: "downtown@healthfirst.com",
+      name: "Dis-Chem Pharmacy - Rosebank",
+      address: "50 Bath Avenue, Rosebank, Johannesburg, 2196",
+      phone: "+27 11 788 5123",
+      email: "rosebank@dischem.co.za",
       operatingHours: "Mon-Fri: 8:00 AM - 8:00 PM, Sat: 9:00 AM - 5:00 PM",
-      latitude: -26.2041,
-      longitude: 28.0473,
+      latitude: -26.1458,
+      longitude: 28.0436,
     },
   });
 
@@ -55,13 +55,13 @@ async function main() {
     update: {},
     create: {
       id: "disp_002",
-      name: "MedPlus Dispensary - Suburb",
-      address: "456 Oak Avenue, Suburbia, City 10002",
-      phone: "+1-555-0102",
-      email: "suburb@medplus.com",
+      name: "Clicks Pharmacy - Waterfront",
+      address: "V&A Waterfront, Breakwater Blvd, Cape Town, 8001",
+      phone: "+27 21 418 2511",
+      email: "waterfront@clicks.co.za",
       operatingHours: "Mon-Sat: 9:00 AM - 6:00 PM",
-      latitude: -26.1500,
-      longitude: 28.1000,
+      latitude: -33.9036,
+      longitude: 18.4215,
     },
   });
 
@@ -70,13 +70,13 @@ async function main() {
     update: {},
     create: {
       id: "disp_003",
-      name: "CareWell Pharmacy - Mall Branch",
-      address: "789 Shopping Center Blvd, Midtown, City 10003",
-      phone: "+1-555-0103",
-      email: "mall@carewell.com",
+      name: "Medirite Pharmacy - Menlyn",
+      address: "Menlyn Park Shopping Centre, Atterbury Rd, Pretoria, 0063",
+      phone: "+27 12 368 1120",
+      email: "menlyn@medirite.co.za",
       operatingHours: "Mon-Sun: 9:00 AM - 9:00 PM",
-      latitude: -26.1800,
-      longitude: 28.0600,
+      latitude: -25.7825,
+      longitude: 28.2758,
     },
   });
   console.log(`✅ Created ${3} dispensaries`);
@@ -89,7 +89,7 @@ async function main() {
       description: "Broad-spectrum antibiotic for bacterial infections",
       category: "Antibiotics",
       dosage: "500mg capsules",
-      manufacturer: "PharmaCorp",
+      manufacturer: "Aspen Pharmacare",
       requiresPrescription: true,
     },
     {
@@ -98,7 +98,7 @@ async function main() {
       description: "Pain reliever and fever reducer",
       category: "Analgesics",
       dosage: "500mg tablets",
-      manufacturer: "GenericLabs",
+      manufacturer: "Adcock Ingram",
       requiresPrescription: false,
     },
     {
@@ -107,7 +107,7 @@ async function main() {
       description: "Anti-inflammatory pain relief medication",
       category: "Analgesics",
       dosage: "400mg tablets",
-      manufacturer: "MediPro",
+      manufacturer: "Cipla Medpro",
       requiresPrescription: false,
     },
     {
@@ -116,7 +116,7 @@ async function main() {
       description: "Oral medication for type 2 diabetes management",
       category: "Antidiabetics",
       dosage: "500mg tablets",
-      manufacturer: "DiabetiCare",
+      manufacturer: "Apotex South Africa",
       requiresPrescription: true,
     },
     {
@@ -125,7 +125,7 @@ async function main() {
       description: "Proton pump inhibitor for acid reflux and ulcers",
       category: "Gastrointestinal",
       dosage: "20mg capsules",
-      manufacturer: "GastroHealth",
+      manufacturer: "Aspen Pharmacare",
       requiresPrescription: true,
     },
     {
@@ -134,7 +134,7 @@ async function main() {
       description: "Antihistamine for allergy relief",
       category: "Antihistamines",
       dosage: "10mg tablets",
-      manufacturer: "AllerFree",
+      manufacturer: "Adcock Ingram",
       requiresPrescription: false,
     },
     {
@@ -143,7 +143,7 @@ async function main() {
       description: "Bronchodilator for asthma and breathing difficulties",
       category: "Respiratory",
       dosage: "100mcg per actuation",
-      manufacturer: "BreatheEasy",
+      manufacturer: "Cipla Medpro",
       requiresPrescription: true,
     },
     {
@@ -152,7 +152,7 @@ async function main() {
       description: "Calcium channel blocker for high blood pressure",
       category: "Cardiovascular",
       dosage: "5mg tablets",
-      manufacturer: "CardioGuard",
+      manufacturer: "Apotex South Africa",
       requiresPrescription: true,
     },
     {
@@ -161,7 +161,7 @@ async function main() {
       description: "Dietary supplement for bone health",
       category: "Supplements",
       dosage: "1000IU capsules",
-      manufacturer: "VitaPlus",
+      manufacturer: "Ascendis Health",
       requiresPrescription: false,
     },
     {
@@ -170,7 +170,7 @@ async function main() {
       description: "Anti-diarrheal medication for acute diarrhea",
       category: "Gastrointestinal",
       dosage: "2mg capsules",
-      manufacturer: "DigestAid",
+      manufacturer: "Adcock Ingram",
       requiresPrescription: false,
     },
   ];
