@@ -136,9 +136,6 @@ function LoginForm() {
             <p className="text-xs text-blue-700">
               <strong>User:</strong> john@example.com / User@123
             </p>
-            <p className="text-xs text-blue-700">
-              <strong>Admin:</strong> admin@medicheck.com / Admin@123
-            </p>
           </div>
         </div>
 
