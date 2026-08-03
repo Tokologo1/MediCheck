@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'project-fbd1d979-ca47-4901-bbf' }}
   GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
   ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY || 'medicheck' }}
   CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'medicheck-web' }}
