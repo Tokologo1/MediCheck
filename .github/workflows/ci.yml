@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, dev]
 
 permissions:
   contents: read
@@ -16,12 +16,30 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Build-time stubs so Next.js / Prisma don't error during CI build
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+      JWT_ACCESS_SECRET: "ci-access-secret-placeholder"
+      JWT_REFRESH_SECRET: "ci-refresh-secret-placeholder"
+      STRIPE_SECRET_KEY: "sk_test_ci_placeholder_not_real"
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_ci_placeholder_not_real"
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000"
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build

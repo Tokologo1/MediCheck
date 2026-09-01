@@ -2,6 +2,8 @@ name: Deploy to Cloud Run
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -26,21 +28,57 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      # Authenticate to GCP via Workload Identity Federation
+      # Required GitHub repo secrets:
+      #   GCP_WORKLOAD_IDENTITY_PROVIDER — Workload Identity Provider resource name
+      #   GCP_SERVICE_ACCOUNT           — Service account email with deploy permissions
       - uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build image
+
+      # Ensure the GCS staging bucket exists for Cloud Build source uploads
+      - name: Ensure Cloud Build source bucket exists
+        run: |
+          gcloud storage buckets describe "gs://$CLOUD_BUILD_SOURCE_BUCKET" \
+            --project="$GCP_PROJECT_ID" &>/dev/null || \
+          gcloud storage buckets create "gs://$CLOUD_BUILD_SOURCE_BUCKET" \
+            --project="$GCP_PROJECT_ID" \
+            --location="$GCP_REGION" \
+            --uniform-bucket-level-access
+
+      # Build both app and migration images via Cloud Build (kaniko)
+      - name: Build images
         run: >-
-          gcloud builds submit . --config=cloudbuild.yaml --project="$GCP_PROJECT_ID" --gcs-source-staging-dir="gs://$CLOUD_BUILD_SOURCE_BUCKET/source"
+          gcloud builds submit . --config=cloudbuild.yaml
+          --project="$GCP_PROJECT_ID"
+          --gcs-source-staging-dir="gs://$CLOUD_BUILD_SOURCE_BUCKET/source"
           --substitutions="_REGION=$GCP_REGION,_REPO_NAME=$ARTIFACT_REPOSITORY,_SERVICE_NAME=$CLOUD_RUN_SERVICE,_TAG=$GITHUB_SHA"
+
+      # Run Prisma migrations via Cloud Run Job
       - name: Run database migrations
         run: >-
-          gcloud run jobs update "$MIGRATION_JOB" --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA-migrate"
+          gcloud run jobs update "$MIGRATION_JOB"
+          --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA-migrate"
           --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --quiet &&
-          gcloud run jobs execute "$MIGRATION_JOB" --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --wait
+          gcloud run jobs execute "$MIGRATION_JOB"
+          --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --wait
+
+      # Deploy the new image; also update Stripe secrets from Secret Manager
       - name: Deploy service
         run: >-
-          gcloud run services update "$CLOUD_RUN_SERVICE" --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA"
-          --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --quiet
+          gcloud run services update "$CLOUD_RUN_SERVICE"
+          --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA"
+          --region="$GCP_REGION" --project="$GCP_PROJECT_ID"
+          --update-secrets="STRIPE_SECRET_KEY=medicheck-stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=medicheck-stripe-webhook-secret:latest"
+          --update-env-vars="NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
+          --quiet
+
+      - name: Print service URL
+        run: >-
+          gcloud run services describe "$CLOUD_RUN_SERVICE"
+          --region="$GCP_REGION" --project="$GCP_PROJECT_ID"
+          --format="value(status.url)"
