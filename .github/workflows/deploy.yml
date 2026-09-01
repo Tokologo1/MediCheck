@@ -67,14 +67,13 @@ jobs:
           gcloud run jobs execute "$MIGRATION_JOB"
           --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --wait
 
-      # Deploy the new image; also update Stripe secrets from Secret Manager
+      # Deploy the new image; wire all 3 Stripe secrets from Secret Manager
       - name: Deploy service
         run: >-
           gcloud run services update "$CLOUD_RUN_SERVICE"
           --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA"
           --region="$GCP_REGION" --project="$GCP_PROJECT_ID"
-          --update-secrets="STRIPE_SECRET_KEY=medicheck-stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=medicheck-stripe-webhook-secret:latest"
-          --update-env-vars="NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.STRIPE_PUBLISHABLE_KEY }}"
+          --update-secrets="STRIPE_SECRET_KEY=medicheck-stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=medicheck-stripe-webhook-secret:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=medicheck-stripe-publishable-key:latest"
           --quiet
 
       - name: Print service URL
