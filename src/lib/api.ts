@@ -114,4 +114,11 @@ export const api = {
 
   delete: (url: string, options?: FetchOptions) =>
     apiFetch(url, { ...options, method: "DELETE" }),
+
+  patch: (url: string, body: unknown, options?: FetchOptions) =>
+    apiFetch(url, {
+      ...options,
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 };

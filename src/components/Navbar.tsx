@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   UserCircle,
+  ShoppingCart,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { apiFetch } from "@/lib/api";
@@ -32,11 +34,21 @@ export default function Navbar({ user }: NavbarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration-safe mount guard
     setMounted(true);
   }, []);
+
+  // Fetch cart item count for badge
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/cart")
+      .then((r) => r.json())
+      .then((d) => setCartCount(d.cart?.itemCount ?? 0))
+      .catch(() => {});
+  }, [user, pathname]); // re-fetch on route change so badge updates after add-to-cart
 
   const handleLogout = async () => {
     try {
@@ -52,6 +64,7 @@ export default function Navbar({ user }: NavbarProps) {
     ? [
         { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { href: "/search", label: "Search Medications", icon: Search },
+        { href: "/orders", label: "My Orders", icon: ClipboardList },
         { href: "/profile", label: "Profile", icon: UserCircle },
         ...(user.role === "ADMIN"
           ? [{ href: "/admin", label: "Admin Panel", icon: Shield }]
@@ -108,30 +121,64 @@ export default function Navbar({ user }: NavbarProps) {
             })}
           </div>
 
-          {/* User Info + Logout */}
-          {user && (
-            <div className="hidden md:flex items-center gap-3">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role.toLowerCase()}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+          {/* Cart + User Info + Logout */}
+          <div className="hidden md:flex items-center gap-3">
+            {user && (
+              <Link
+                href="/cart"
+                className={cn(
+                  "relative flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  pathname === "/cart"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                )}
               >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </div>
-          )}
+                <ShoppingCart className="h-4 w-4" />
+                Cart
+                {cartCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-emerald-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+            {user && (
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  <p className="text-xs text-gray-500 capitalize">{user.role.toLowerCase()}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Mobile: cart badge + hamburger */}
+          <div className="md:hidden flex items-center gap-2">
+            {user && (
+              <Link href="/cart" className="relative p-2 rounded-lg text-gray-600 hover:bg-gray-100">
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] bg-emerald-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center px-0.5">
+                    {cartCount > 99 ? "99+" : cartCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation */}

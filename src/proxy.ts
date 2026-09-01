@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Routes that require authentication
-const PROTECTED_ROUTES = ["/dashboard", "/search", "/medications"];
+const PROTECTED_ROUTES = ["/dashboard", "/search", "/medications", "/cart", "/orders", "/checkout"];
 // Routes that require admin role
 const ADMIN_ROUTES = ["/admin"];
+// API routes exempt from CSRF (external webhooks, auth bootstrap)
+const CSRF_EXEMPT = ["/api/auth/login", "/api/auth/register", "/api/checkout/webhook"];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -14,26 +16,21 @@ export function proxy(request: NextRequest) {
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("X-XSS-Protection", "1; mode=block");
-  response.headers.set(
-    "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(self)"
-  );
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
 
   if (process.env.NODE_ENV === "production") {
-    response.headers.set(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains"
-    );
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
 
-  // Content Security Policy
+  // Content Security Policy (Stripe-compatible)
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob:",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self'",
+    "connect-src 'self' https://api.stripe.com",
+    "frame-src https://js.stripe.com https://hooks.stripe.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -41,7 +38,6 @@ export function proxy(request: NextRequest) {
   response.headers.set("Content-Security-Policy", csp);
 
   // --- CSRF Protection (Double Submit Cookie) ---
-  // Set a new CSRF token on GET requests (page loads)
   if (request.method === "GET" && !pathname.startsWith("/api/")) {
     const csrfToken = crypto.randomUUID();
     response.cookies.set("csrf-token", csrfToken, {
@@ -54,19 +50,14 @@ export function proxy(request: NextRequest) {
 
   // Validate CSRF on mutating API requests
   if (pathname.startsWith("/api/") && request.method !== "GET") {
-    // Skip CSRF for auth endpoints (login/register happen before we have a cookie)
-    const isAuthEndpoint =
-      pathname === "/api/auth/login" || pathname === "/api/auth/register";
-
-    if (!isAuthEndpoint) {
+    const isExempt = CSRF_EXEMPT.some(
+      (exempt) => pathname === exempt || pathname.startsWith(exempt + "/")
+    );
+    if (!isExempt) {
       const cookieCsrf = request.cookies.get("csrf-token")?.value;
       const headerCsrf = request.headers.get("x-csrf-token");
-
       if (!cookieCsrf || !headerCsrf || cookieCsrf !== headerCsrf) {
-        return NextResponse.json(
-          { error: "CSRF validation failed" },
-          { status: 403 }
-        );
+        return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
       }
     }
   }
@@ -78,11 +69,9 @@ export function proxy(request: NextRequest) {
 
   const accessToken = request.cookies.get("access-token")?.value;
 
-  // Check if user is trying to access protected routes
   const isProtectedRoute = PROTECTED_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
-
   const isAdminRoute = ADMIN_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(route + "/")
   );
@@ -102,7 +91,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and Next.js internals
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

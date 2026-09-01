@@ -52,9 +52,29 @@ export const inventoryUpdateSchema = z.object({
   price: z.number().min(0),
 });
 
+// ─── Cart & Order Schemas ─────────────────────────────────────────────────────
+
+export const cartAddSchema = z.object({
+  medicationId: z.string().min(1, "Medication ID is required"),
+  dispensaryId: z.string().min(1, "Dispensary ID is required"),
+  quantity: z.number().int().min(1, "Quantity must be at least 1").max(99, "Maximum 99 units per item"),
+});
+
+export const cartUpdateSchema = z.object({
+  quantity: z.number().int().min(1, "Quantity must be at least 1").max(99, "Maximum 99 units per item"),
+});
+
+export const orderStatusSchema = z.object({
+  orderId: z.string().min(1),
+  status: z.enum(["PENDING_PAYMENT", "PAID", "READY_FOR_COLLECTION", "COLLECTED", "CANCELLED"]),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type MedicationSearchInput = z.infer<typeof medicationSearchSchema>;
 export type MedicationCreateInput = z.infer<typeof medicationCreateSchema>;
 export type DispensaryCreateInput = z.infer<typeof dispensaryCreateSchema>;
 export type InventoryUpdateInput = z.infer<typeof inventoryUpdateSchema>;
+export type CartAddInput = z.infer<typeof cartAddSchema>;
+export type CartUpdateInput = z.infer<typeof cartUpdateSchema>;
+export type OrderStatusInput = z.infer<typeof orderStatusSchema>;

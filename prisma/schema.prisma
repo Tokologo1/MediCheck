@@ -12,6 +12,14 @@ enum Role {
   ADMIN
 }
 
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  READY_FOR_COLLECTION
+  COLLECTED
+  CANCELLED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -20,6 +28,9 @@ model User {
   role         Role     @default(USER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  cart         Cart?
+  orders       Order[]
 
   @@map("users")
 }
@@ -37,6 +48,8 @@ model Dispensary {
   updatedAt       DateTime @updatedAt
 
   inventory       Inventory[]
+  cartItems       CartItem[]
+  orders          Order[]
 
   @@map("dispensaries")
 }
@@ -53,22 +66,86 @@ model Medication {
   updatedAt            DateTime @updatedAt
 
   inventory            Inventory[]
+  cartItems            CartItem[]
+  orderItems           OrderItem[]
 
   @@map("medications")
 }
 
 model Inventory {
-  id             String   @id @default(cuid())
-  dispensaryId   String
-  medicationId   String
+  id              String   @id @default(cuid())
+  dispensaryId    String
+  medicationId    String
   quantityInStock Int
-  price          Float
-  lastRestocked  DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  price           Float
+  lastRestocked   DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  dispensary     Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
-  medication     Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  dispensary      Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  medication      Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
 
   @@unique([dispensaryId, medicationId])
   @@map("inventory")
 }
+
+// ─── Shopping Cart ────────────────────────────────────────────────────────────
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@map("carts")
+}
+
+model CartItem {
+  id           String     @id @default(cuid())
+  cartId       String
+  cart         Cart       @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  dispensaryId String
+  dispensary   Dispensary @relation(fields: [dispensaryId], references: [id], onDelete: Cascade)
+  quantity     Int        @default(1)
+  priceAtAdd   Float
+  createdAt    DateTime   @default(now())
+
+  @@unique([cartId, medicationId, dispensaryId])
+  @@map("cart_items")
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id])
+  dispensaryId    String
+  dispensary      Dispensary  @relation(fields: [dispensaryId], references: [id])
+  status          OrderStatus @default(PENDING_PAYMENT)
+  totalAmount     Float
+  stripePaymentId String?
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items           OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id           String     @id @default(cuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id])
+  quantity     Int
+  unitPrice    Float
+
+  @@map("order_items")
+}
+
