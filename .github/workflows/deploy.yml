@@ -1,83 +1,125 @@
 name: Deploy to Cloud Run
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  id-token: write
+  id-token: write   # needed for Workload Identity Federation
 
 concurrency:
   group: production-deploy
   cancel-in-progress: false
 
 env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'project-fbd1d979-ca47-4901-bbf' }}
-  GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
-  ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY || 'medicheck' }}
-  CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'medicheck-web' }}
-  MIGRATION_JOB: ${{ vars.MIGRATION_JOB || 'medicheck-migrate' }}
-  CLOUD_BUILD_SOURCE_BUCKET: ${{ vars.CLOUD_BUILD_SOURCE_BUCKET || 'project-fbd1d979-ca47-4901-bbf-medicheck-build-source' }}
+  PROJECT_ID: project-fbd1d979-ca47-4901-bbf
+  REGION: us-central1
+  REPO: medicheck
+  SERVICE: medicheck-web
+  MIGRATE_JOB: medicheck-migrate
+  WIF_PROVIDER: projects/1023992607262/locations/global/workloadIdentityPools/github/providers/github
+  DEPLOYER_SA: medicheck-github-deployer@project-fbd1d979-ca47-4901-bbf.iam.gserviceaccount.com
 
 jobs:
   deploy:
+    name: Build & Deploy
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 30
+
     steps:
-      - uses: actions/checkout@v4
+      # ── 1. Checkout ─────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Authenticate to GCP via Workload Identity Federation
-      # Required GitHub repo secrets:
-      #   GCP_WORKLOAD_IDENTITY_PROVIDER — Workload Identity Provider resource name
-      #   GCP_SERVICE_ACCOUNT           — Service account email with deploy permissions
-      - uses: google-github-actions/auth@v2
+      # ── 2. Authenticate to GCP via Workload Identity Federation ─────────────
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
 
-      # Ensure the GCS staging bucket exists for Cloud Build source uploads
-      - name: Ensure Cloud Build source bucket exists
+      # ── 3. Ensure Cloud Build source bucket exists ───────────────────────────
+      - name: Ensure build source bucket
         run: |
-          gcloud storage buckets describe "gs://$CLOUD_BUILD_SOURCE_BUCKET" \
-            --project="$GCP_PROJECT_ID" &>/dev/null || \
-          gcloud storage buckets create "gs://$CLOUD_BUILD_SOURCE_BUCKET" \
-            --project="$GCP_PROJECT_ID" \
-            --location="$GCP_REGION" \
-            --uniform-bucket-level-access
+          BUCKET="$PROJECT_ID-medicheck-build-source"
+          gcloud storage buckets describe "gs://$BUCKET" &>/dev/null 2>&1 || \
+          gcloud storage buckets create "gs://$BUCKET" \
+            --location="$REGION" \
+            --uniform-bucket-level-access \
+            --quiet
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
 
-      # Build both app and migration images via Cloud Build (kaniko)
-      - name: Build images
-        run: >-
-          gcloud builds submit . --config=cloudbuild.yaml
-          --project="$GCP_PROJECT_ID"
-          --gcs-source-staging-dir="gs://$CLOUD_BUILD_SOURCE_BUCKET/source"
-          --substitutions="_REGION=$GCP_REGION,_REPO_NAME=$ARTIFACT_REPOSITORY,_SERVICE_NAME=$CLOUD_RUN_SERVICE,_TAG=$GITHUB_SHA"
+      # ── 4. Build image via Cloud Build (kaniko) ──────────────────────────────
+      - name: Build Docker image
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$SERVICE:$GITHUB_SHA"
+          gcloud builds submit . \
+            --config=cloudbuild.yaml \
+            --substitutions="_REGION=$REGION,_REPO_NAME=$REPO,_SERVICE_NAME=$SERVICE,_TAG=$GITHUB_SHA" \
+            --gcs-source-staging-dir="gs://$PROJECT_ID-medicheck-build-source/source" \
+            --quiet
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
+          REPO: ${{ env.REPO }}
+          SERVICE: ${{ env.SERVICE }}
 
-      # Run Prisma migrations via Cloud Run Job
+      # ── 5. Run Prisma migrations ─────────────────────────────────────────────
       - name: Run database migrations
-        run: >-
-          gcloud run jobs update "$MIGRATION_JOB"
-          --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA-migrate"
-          --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --quiet &&
-          gcloud run jobs execute "$MIGRATION_JOB"
-          --region="$GCP_REGION" --project="$GCP_PROJECT_ID" --wait
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$SERVICE:$GITHUB_SHA-migrate"
+          # Update the migrate job image and execute
+          gcloud run jobs update "$MIGRATE_JOB" \
+            --image="$IMAGE" \
+            --region="$REGION" \
+            --quiet 2>/dev/null || true
+          gcloud run jobs execute "$MIGRATE_JOB" \
+            --region="$REGION" \
+            --wait \
+            --quiet
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
+          REPO: ${{ env.REPO }}
+          SERVICE: ${{ env.SERVICE }}
+          MIGRATE_JOB: ${{ env.MIGRATE_JOB }}
 
-      # Deploy the new image; wire all 3 Stripe secrets from Secret Manager
-      - name: Deploy service
-        run: >-
-          gcloud run services update "$CLOUD_RUN_SERVICE"
-          --image="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT_ID/$ARTIFACT_REPOSITORY/$CLOUD_RUN_SERVICE:$GITHUB_SHA"
-          --region="$GCP_REGION" --project="$GCP_PROJECT_ID"
-          --update-secrets="STRIPE_SECRET_KEY=medicheck-stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=medicheck-stripe-webhook-secret:latest,NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=medicheck-stripe-publishable-key:latest"
-          --quiet
+      # ── 6. Deploy to Cloud Run ───────────────────────────────────────────────
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO/$SERVICE:$GITHUB_SHA"
+          gcloud run services update "$SERVICE" \
+            --image="$IMAGE" \
+            --region="$REGION" \
+            --update-secrets="\
+              DATABASE_URL=medicheck-db-url:latest,\
+              JWT_ACCESS_SECRET=medicheck-jwt-access-secret:latest,\
+              JWT_REFRESH_SECRET=medicheck-jwt-refresh-secret:latest,\
+              STRIPE_SECRET_KEY=medicheck-stripe-secret-key:latest,\
+              STRIPE_WEBHOOK_SECRET=medicheck-stripe-webhook-secret:latest,\
+              NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=medicheck-stripe-publishable-key:latest" \
+            --quiet
+        env:
+          PROJECT_ID: ${{ env.PROJECT_ID }}
+          REGION: ${{ env.REGION }}
+          SERVICE: ${{ env.SERVICE }}
 
-      - name: Print service URL
-        run: >-
-          gcloud run services describe "$CLOUD_RUN_SERVICE"
-          --region="$GCP_REGION" --project="$GCP_PROJECT_ID"
-          --format="value(status.url)"
+      # ── 7. Print service URL ────────────────────────────────────────────────
+      - name: Get service URL
+        run: |
+          gcloud run services describe "$SERVICE" \
+            --region="$REGION" \
+            --format="value(status.url)"
+        env:
+          SERVICE: ${{ env.SERVICE }}
+          REGION: ${{ env.REGION }}
