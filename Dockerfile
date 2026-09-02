@@ -28,6 +28,14 @@ RUN npx prisma generate
 
 # Cap build heap so concurrent Cloud Build jobs do not reserve unnecessary memory.
 ENV NODE_OPTIONS="--max-old-space-size=2048"
+
+# Build-time stubs — Next.js page data collection runs server code during build.
+# Real secrets are injected at runtime via Cloud Run / Secret Manager.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
+ENV STRIPE_SECRET_KEY="sk_test_build_placeholder_not_real"
+ENV STRIPE_WEBHOOK_SECRET="whsec_build_placeholder_not_real"
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="pk_test_build_placeholder_not_real"
+
 RUN npm run build
 
 # Stage 3: Minimal production image
